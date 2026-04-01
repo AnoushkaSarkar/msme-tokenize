@@ -26,13 +26,13 @@ export default function Navbar({ walletAddress, onConnectWallet, onDisconnectWal
     : null;
 
   return (
-    <nav className="bg-white shadow-md border-b border-gray-100 sticky top-8 z-40">
+    <nav className="bg-gray-900 shadow-lg border-b border-gray-800 sticky top-8 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-primary-600 to-saffron rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-orange-500 rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-sm">M</span>
             </div>
             <span className="text-xl font-bold gradient-text">MSME Tokenize</span>
@@ -44,7 +44,7 @@ export default function Navbar({ walletAddress, onConnectWallet, onDisconnectWal
               <Link
                 key={link.name}
                 href={link.href}
-                className="text-gray-600 hover:text-primary-600 font-medium text-sm transition-colors duration-200"
+                className="text-gray-400 hover:text-blue-400 font-medium text-sm transition-colors duration-200"
               >
                 {link.name}
               </Link>
@@ -55,12 +55,12 @@ export default function Navbar({ walletAddress, onConnectWallet, onDisconnectWal
           <div className="hidden md:flex items-center space-x-3">
             {walletAddress ? (
               <div className="flex items-center space-x-2">
-                <div className="bg-green-100 text-green-700 px-3 py-1.5 rounded-full text-sm font-medium">
+                <div className="bg-green-900/50 text-green-400 border border-green-800 px-3 py-1.5 rounded-full text-sm font-medium">
                   🟢 {shortAddress}
                 </div>
                 <button
                   onClick={onDisconnectWallet}
-                  className="text-gray-400 hover:text-red-500 text-sm transition-colors"
+                  className="text-gray-500 hover:text-red-400 text-sm transition-colors"
                 >
                   Disconnect
                 </button>
@@ -77,7 +77,7 @@ export default function Navbar({ walletAddress, onConnectWallet, onDisconnectWal
 
           {/* Mobile Menu Button */}
           <button
-            className="md:hidden p-2 rounded-lg hover:bg-gray-100"
+            className="md:hidden p-2 rounded-lg hover:bg-gray-800 text-gray-400"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
           >
             {isMenuOpen ? '✕' : '☰'}
@@ -87,23 +87,23 @@ export default function Navbar({ walletAddress, onConnectWallet, onDisconnectWal
 
       {/* Mobile Menu */}
       {isMenuOpen && (
-        <div className="md:hidden bg-white border-t border-gray-100 animate-fade-in">
+        <div className="md:hidden bg-gray-900 border-t border-gray-800 animate-fade-in">
           <div className="px-4 py-3 space-y-2">
             {navLinks.map((link) => (
               <Link
                 key={link.name}
                 href={link.href}
-                className="block py-2 px-3 text-gray-600 hover:text-primary-600 hover:bg-primary-50 rounded-lg font-medium transition-colors"
+                className="block py-2 px-3 text-gray-400 hover:text-blue-400 hover:bg-gray-800 rounded-lg font-medium transition-colors"
                 onClick={() => setIsMenuOpen(false)}
               >
                 {link.name}
               </Link>
             ))}
-            <div className="pt-2 border-t border-gray-100">
+            <div className="pt-2 border-t border-gray-800">
               {walletAddress ? (
                 <div className="flex items-center justify-between py-2 px-3">
-                  <span className="text-green-700 font-medium text-sm">🟢 {shortAddress}</span>
-                  <button onClick={onDisconnectWallet} className="text-red-500 text-sm">
+                  <span className="text-green-400 font-medium text-sm">🟢 {shortAddress}</span>
+                  <button onClick={onDisconnectWallet} className="text-red-400 text-sm">
                     Disconnect
                   </button>
                 </div>
