@@ -131,7 +131,7 @@ export default function MSMEDetailPage({ params }: { params: { id: string } }) {
 
       // Send real MetaMask transaction
       const tx = await signer.sendTransaction({
-        to: address!, // sending to self for demo (replace with contract address)
+        to: "0x000000000000000000000000000000000000dEaD",// sending to self for demo (replace with contract address)
         value: maticWei,
         gasLimit: 21000,
       });

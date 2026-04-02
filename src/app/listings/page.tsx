@@ -1,7 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { useLang } from '@/components/layout/ClientLayout';
 import { CATEGORY_LABELS } from '@/types';
 
@@ -138,6 +140,7 @@ const translations: Record<string, any> = {
     noResultsDesc: 'Try changing your filters',
     clearFilters: 'Clear Filters',
     sebi: '⚠️ SEBI Disclaimer: Educational prototype only. Not financial advice.',
+    loading: 'Loading MSMEs...',
   },
   hi: {
     title: 'MSME लिस्टिंग देखें',
@@ -164,6 +167,7 @@ const translations: Record<string, any> = {
     noResultsDesc: 'फिल्टर बदलकर देखें',
     clearFilters: 'फिल्टर हटाएं',
     sebi: '⚠️ SEBI अस्वीकरण: केवल शैक्षिक प्रोटोटाइप। वित्तीय सलाह नहीं।',
+    loading: 'MSME लोड हो रहे हैं...',
   }
 };
 
@@ -174,20 +178,42 @@ export default function ListingsPage() {
   const [cityFilter, setCityFilter] = useState('all');
   const [riskFilter, setRiskFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [allMSMEs, setAllMSMEs] = useState(SAMPLE_MSMES as any[]);
+  const [loading, setLoading] = useState(true);
 
-  const filteredMSMEs = SAMPLE_MSMES.filter((msme) => {
+  useEffect(() => {
+    const fetchMSMEs = async () => {
+      try {
+        const snapshot = await getDocs(collection(db, 'msmes'));
+        if (!snapshot.empty) {
+          const firebaseMSMEs = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            riskScore: (doc.data() as any).riskScore || { score: 50, label: 'Moderate' },
+          }));
+          setAllMSMEs([...SAMPLE_MSMES, ...firebaseMSMEs]);
+        }
+      } catch (error) {
+        console.error('Firebase error:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchMSMEs();
+  }, []);
+
+  const filteredMSMEs = allMSMEs.filter((msme) => {
     if (categoryFilter !== 'all' && msme.category !== categoryFilter) return false;
     if (cityFilter !== 'all' && msme.city !== cityFilter) return false;
-    if (riskFilter !== 'all' && msme.riskScore.label !== riskFilter) return false;
+    if (riskFilter !== 'all' && msme.riskScore?.label !== riskFilter) return false;
     if (searchQuery && !msme.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     return true;
   });
 
-  const totalRaised = SAMPLE_MSMES.reduce((a, b) => a + b.amountRaised, 0);
+  const totalRaised = allMSMEs.reduce((a, b) => a + (b.amountRaised || 0), 0);
 
   return (
     <div className="min-h-screen bg-[#050A18]">
-      {/* SEBI Banner */}
       <div className="disclaimer-banner">{t.sebi}</div>
 
       <div className="page-container py-12">
@@ -206,7 +232,7 @@ export default function ListingsPage() {
         {/* Stats Bar */}
         <div className="grid grid-cols-3 gap-4 mb-10">
           <div className="glass-card p-4 text-center">
-            <div className="text-2xl font-black gradient-text">{SAMPLE_MSMES.length}</div>
+            <div className="text-2xl font-black gradient-text">{allMSMEs.length}</div>
             <div className="text-gray-500 text-sm">MSMEs Listed</div>
           </div>
           <div className="glass-card p-4 text-center">
@@ -214,7 +240,9 @@ export default function ListingsPage() {
             <div className="text-gray-500 text-sm">Total Raised</div>
           </div>
           <div className="glass-card p-4 text-center">
-            <div className="text-2xl font-black text-orange-400">{new Set(SAMPLE_MSMES.map(m => m.city)).size}</div>
+            <div className="text-2xl font-black text-orange-400">
+              {new Set(allMSMEs.map(m => m.city)).size}
+            </div>
             <div className="text-gray-500 text-sm">Cities</div>
           </div>
         </div>
@@ -245,8 +273,8 @@ export default function ListingsPage() {
               <label className="label">📍 {t.city}</label>
               <select className="input-field" value={cityFilter} onChange={(e) => setCityFilter(e.target.value)}>
                 <option value="all">{t.allCities}</option>
-                {[...new Set(SAMPLE_MSMES.map(m => m.city))].map((city) => (
-                  <option key={city} value={city}>{city}</option>
+                {[...new Set(allMSMEs.map(m => m.city))].map((city) => (
+                  <option key={city as string} value={city as string}>{city as string}</option>
                 ))}
               </select>
             </div>
@@ -263,19 +291,28 @@ export default function ListingsPage() {
           </div>
         </div>
 
+        {/* Loading */}
+        {loading && (
+          <div className="text-center py-12">
+            <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-gray-500">{t.loading}</p>
+          </div>
+        )}
+
         {/* Results Count */}
-        <p className="text-sm text-gray-500 mb-6">
-          {t.showing} <span className="text-white font-bold">{filteredMSMEs.length}</span> {t.of} {SAMPLE_MSMES.length} {t.msmes}
-        </p>
+        {!loading && (
+          <p className="text-sm text-gray-500 mb-6">
+            {t.showing} <span className="text-white font-bold">{filteredMSMEs.length}</span> {t.of} {allMSMEs.length} {t.msmes}
+          </p>
+        )}
 
         {/* MSME Grid */}
-        {filteredMSMEs.length > 0 ? (
+        {!loading && filteredMSMEs.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredMSMEs.map((msme) => {
-              const progress = (msme.amountRaised / msme.targetAmount) * 100;
+              const progress = ((msme.amountRaised || 0) / (msme.targetAmount || 1)) * 100;
               return (
                 <div key={msme.id} className="card p-6 hover:border-blue-500/40 transition-all group">
-                  {/* Top */}
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center text-2xl">
@@ -288,46 +325,42 @@ export default function ListingsPage() {
                         <p className="text-gray-500 text-xs">{msme.city}, {msme.state}</p>
                       </div>
                     </div>
-                    <span className={`text-xs font-semibold px-2 py-1 rounded-lg border ${riskColors[msme.riskScore.label]}`}>
-                      {msme.riskScore.label}
+                    <span className={`text-xs font-semibold px-2 py-1 rounded-lg border ${riskColors[msme.riskScore?.label] || riskColors.Moderate}`}>
+                      {msme.riskScore?.label || 'Moderate'}
                     </span>
                   </div>
 
-                  {/* Description */}
                   <p className="text-gray-500 text-xs mb-4 line-clamp-2">{msme.description}</p>
 
-                  {/* Progress */}
                   <div className="mb-4">
                     <div className="flex justify-between text-xs mb-1">
-                      <span className="text-gray-400">₹{(msme.amountRaised / 100000).toFixed(1)}L {t.raised}</span>
-                      <span className="text-gray-500">₹{(msme.targetAmount / 100000).toFixed(1)}L {t.target}</span>
+                      <span className="text-gray-400">₹{((msme.amountRaised || 0) / 100000).toFixed(1)}L {t.raised}</span>
+                      <span className="text-gray-500">₹{((msme.targetAmount || 0) / 100000).toFixed(1)}L {t.target}</span>
                     </div>
                     <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 rounded-full transition-all"
+                        className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 rounded-full"
                         style={{ width: `${Math.min(progress, 100)}%` }}
                       />
                     </div>
                     <div className="text-right text-xs text-blue-400 font-bold mt-1">{progress.toFixed(1)}% {t.funded}</div>
                   </div>
 
-                  {/* Details */}
                   <div className="grid grid-cols-3 gap-2 mb-4">
                     <div className="bg-gray-800/50 rounded-lg p-2 text-center">
                       <div className="text-white font-bold text-sm">{msme.equityOffered}%</div>
                       <div className="text-gray-500 text-xs">{t.equity}</div>
                     </div>
                     <div className="bg-gray-800/50 rounded-lg p-2 text-center">
-                      <div className="text-white font-bold text-sm">{msme.employees}</div>
+                      <div className="text-white font-bold text-sm">{msme.employees || '-'}</div>
                       <div className="text-gray-500 text-xs">{t.employees}</div>
                     </div>
                     <div className="bg-gray-800/50 rounded-lg p-2 text-center">
-                      <div className="text-white font-bold text-sm">{msme.foundingYear}</div>
+                      <div className="text-white font-bold text-sm">{msme.foundingYear || '-'}</div>
                       <div className="text-gray-500 text-xs">{t.founded}</div>
                     </div>
                   </div>
 
-                  {/* Buttons */}
                   <div className="flex gap-2">
                     <Link href={`/msme/${msme.id}`} className="flex-1 btn-primary text-center text-sm py-2">
                       {t.invest} →
@@ -340,7 +373,10 @@ export default function ListingsPage() {
               );
             })}
           </div>
-        ) : (
+        )}
+
+        {/* No Results */}
+        {!loading && filteredMSMEs.length === 0 && (
           <div className="text-center py-20">
             <div className="text-6xl mb-4">🔍</div>
             <h3 className="text-white font-bold text-xl mb-2">{t.noResults}</h3>

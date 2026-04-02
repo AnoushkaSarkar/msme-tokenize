@@ -1,20 +1,21 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useWallet } from '@/hooks/useWallet';
 
 const translations: Record<string, Record<string, string>> = {
   en: {
     home: 'Home', browse: 'Browse MSMEs', register: 'Register MSME',
     dashboard: 'Dashboard', governance: 'Governance', admin: 'Admin',
-    connect: 'Connect Wallet', disconnect: 'Disconnect', connecting: 'Connecting...',
-    wrongNetwork: 'Wrong Network', tagline: 'MSME Tokenization Platform'
+    connect: 'Connect Wallet', connecting: 'Connecting...',
+    wrongNetwork: 'Wrong Network',
   },
   hi: {
     home: 'होम', browse: 'MSME देखें', register: 'MSME पंजीकरण',
     dashboard: 'डैशबोर्ड', governance: 'गवर्नेंस', admin: 'एडमिन',
-    connect: 'वॉलेट जोड़ें', disconnect: 'डिसकनेक्ट', connecting: 'जोड़ रहे हैं...',
-    wrongNetwork: 'गलत नेटवर्क', tagline: 'MSME टोकनाइजेशन प्लेटफॉर्म'
+    connect: 'वॉलेट जोड़ें', connecting: 'जोड़ रहे हैं...',
+    wrongNetwork: 'गलत नेटवर्क',
   }
 };
 
@@ -38,14 +39,22 @@ export default function Navbar({ lang, setLang }: { lang: string, setLang: (l: s
     <nav className="sticky top-0 z-50 bg-[#050A18]/95 backdrop-blur-md border-b border-blue-500/20">
       <div className="page-container">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center font-black text-white text-sm">
-              V6
-            </div>
-            <div>
-              <span className="font-black text-white text-lg">MSME</span>
-              <span className="font-black bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent text-lg"> Tokenize</span>
+
+          {/* VIBE6 Logo */}
+          <Link href="/" className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Image
+                src="/images/vibe6-logo.png"
+                alt="VIBE6"
+                width={80}
+                height={32}
+                className="h-8 w-auto"
+                onError={() => {}}
+              />
+              <div className="flex flex-col leading-none border-l border-blue-500/30 pl-2">
+                <span className="font-black text-white text-sm">MSME<span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent"> Tokenize</span></span>
+                <span className="text-orange-400 text-xs font-bold">INNOVATHON 2026</span>
+              </div>
             </div>
           </Link>
 
@@ -71,8 +80,7 @@ export default function Navbar({ lang, setLang }: { lang: string, setLang: (l: s
 
             {/* Wallet Button */}
             {!isConnected ? (
-              <button onClick={connectWallet}
-                className="btn-primary text-sm py-2 px-4">
+              <button onClick={connectWallet} className="btn-primary text-sm py-2 px-4">
                 {isLoading ? t.connecting : t.connect}
               </button>
             ) : !isCorrectNetwork ? (
@@ -84,7 +92,7 @@ export default function Navbar({ lang, setLang }: { lang: string, setLang: (l: s
               <div className="flex items-center gap-2">
                 <div className="bg-green-500/10 border border-green-500/30 rounded-xl px-3 py-2">
                   <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+                    <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
                     <span className="text-green-400 text-xs font-mono">
                       {formatAddress(address || '')}
                     </span>
@@ -93,16 +101,12 @@ export default function Navbar({ lang, setLang }: { lang: string, setLang: (l: s
                     {parseFloat(balance || '0').toFixed(3)} MATIC
                   </div>
                 </div>
-                <button onClick={disconnectWallet}
-                  className="text-gray-500 hover:text-red-400 text-xs transition-all">
-                  ✕
-                </button>
+                <button onClick={disconnectWallet} className="text-gray-500 hover:text-red-400 text-xs transition-all">✕</button>
               </div>
             )}
 
             {/* Mobile menu */}
-            <button onClick={() => setMenuOpen(!menuOpen)}
-              className="lg:hidden text-gray-400 hover:text-white p-2">
+            <button onClick={() => setMenuOpen(!menuOpen)} className="lg:hidden text-gray-400 hover:text-white p-2">
               {menuOpen ? '✕' : '☰'}
             </button>
           </div>
