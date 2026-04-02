@@ -33,9 +33,9 @@ export function useWallet() {
     if (!isMetaMaskInstalled()) return;
 
     try {
-      const provider = new BrowserProvider(window.ethereum);
+      const provider = new BrowserProvider(window.ethereum as any);
       const accounts = await provider.listAccounts();
-      
+
       if (accounts.length > 0) {
         const address = accounts[0].address;
         const network = await provider.getNetwork();
@@ -65,9 +65,9 @@ export function useWallet() {
 
     setIsLoading(true);
     try {
-      const provider = new BrowserProvider(window.ethereum);
+      const provider = new BrowserProvider(window.ethereum as any);
       const accounts = await provider.send('eth_requestAccounts', []);
-      
+
       if (accounts.length > 0) {
         const network = await provider.getNetwork();
         const chainId = Number(network.chainId);
@@ -116,7 +116,7 @@ export function useWallet() {
     if (!isMetaMaskInstalled()) return;
 
     try {
-      await window.ethereum.request({
+      await (window.ethereum as any).request({
         method: 'wallet_switchEthereumChain',
         params: [{ chainId: POLYGON_AMOY.chainIdHex }],
       });
@@ -125,7 +125,7 @@ export function useWallet() {
     } catch (switchError: any) {
       if (switchError.code === 4902) {
         try {
-          await window.ethereum.request({
+          await (window.ethereum as any).request({
             method: 'wallet_addEthereumChain',
             params: [{
               chainId: POLYGON_AMOY.chainIdHex,
@@ -163,12 +163,12 @@ export function useWallet() {
       getWalletInfo();
     };
 
-    window.ethereum.on('accountsChanged', handleAccountsChanged);
-    window.ethereum.on('chainChanged', handleChainChanged);
+    (window.ethereum as any).on('accountsChanged', handleAccountsChanged);
+    (window.ethereum as any).on('chainChanged', handleChainChanged);
 
     return () => {
-      window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
-      window.ethereum.removeListener('chainChanged', handleChainChanged);
+      (window.ethereum as any).removeListener('accountsChanged', handleAccountsChanged);
+      (window.ethereum as any).removeListener('chainChanged', handleChainChanged);
     };
   }, [getWalletInfo]);
 

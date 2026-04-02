@@ -14,27 +14,26 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
  */
 contract MSMEToken is ERC20, ERC20Burnable, Ownable, ReentrancyGuard {
     
-    // ===== STRUCTS =====
     struct MSMEInfo {
         string name;
         string category;
         string city;
         string gstNumber;
-        uint256 targetAmount;      // in wei (test MATIC)
-        uint256 equityOffered;     // percentage (1-20)
-        uint256 amountRaised;      // total raised so far
+        uint256 targetAmount;
+        uint256 equityOffered;
+        uint256 amountRaised;
         uint256 foundingYear;
-        string ipfsHash;           // document storage
-        bool isFundraising;        // is currently accepting investments
-        bool targetReached;        // has hit the target
-        bool isRefunded;           // has been refunded
+        string ipfsHash;
+        bool isFundraising;
+        bool targetReached;
+        bool isRefunded;
     }
 
     struct VestingSchedule {
         uint256 totalAmount;
         uint256 releasedAmount;
         uint256 startTime;
-        uint256 duration;          // vesting duration in seconds
+        uint256 duration;
         bool exists;
     }
 
@@ -51,40 +50,30 @@ contract MSMEToken is ERC20, ERC20Burnable, Ownable, ReentrancyGuard {
         mapping(address => bool) hasVoted;
     }
 
-    // ===== STATE VARIABLES =====
     MSMEInfo public msmeInfo;
     
-    // KYC Whitelist (mock for prototype)
     mapping(address => bool) public isWhitelisted;
     address[] public whitelistedAddresses;
     
-    // Vesting
     mapping(address => VestingSchedule) public vestingSchedules;
     
-    // Governance
     uint256 public proposalCount;
     mapping(uint256 => Proposal) public proposals;
     uint256 public constant VOTING_PERIOD = 3 days;
     
-    // Dividend tracking
     uint256 public totalDividendsDistributed;
     mapping(address => uint256) public dividendsReceived;
     
-    // Investment tracking
     mapping(address => uint256) public investmentAmount;
     address[] public investors;
     
-    // Platform fee (2%)
     uint256 public constant PLATFORM_FEE_PERCENT = 2;
     address public platformWallet;
     
-    // Token price (1 token = how much MATIC)
     uint256 public tokenPrice;
     
-    // Pause state
     bool public paused;
 
-    // ===== EVENTS =====
     event TokensPurchased(address indexed buyer, uint256 amount, uint256 cost, uint256 timestamp);
     event DividendDistributed(uint256 totalAmount, uint256 recipientCount, uint256 timestamp);
     event DividendReceived(address indexed recipient, uint256 amount, uint256 timestamp);
@@ -103,7 +92,6 @@ contract MSMEToken is ERC20, ERC20Burnable, Ownable, ReentrancyGuard {
     event ContractUnpaused(uint256 timestamp);
     event IPFSHashUpdated(string oldHash, string newHash, uint256 timestamp);
 
-    // ===== MODIFIERS =====
     modifier whenNotPaused() {
         require(!paused, "Contract is paused");
         _;
@@ -120,7 +108,6 @@ contract MSMEToken is ERC20, ERC20Burnable, Ownable, ReentrancyGuard {
         _;
     }
 
-    // ===== CONSTRUCTOR =====
     constructor(
         string memory _tokenName,
         string memory _tokenSymbol,
@@ -161,7 +148,6 @@ contract MSMEToken is ERC20, ERC20Burnable, Ownable, ReentrancyGuard {
         platformWallet = _platformWallet;
         paused = false;
 
-        // Whitelist the founder and platform
         isWhitelisted[_founderWallet] = true;
         whitelistedAddresses.push(_founderWallet);
         isWhitelisted[_platformWallet] = true;
@@ -170,15 +156,11 @@ contract MSMEToken is ERC20, ERC20Burnable, Ownable, ReentrancyGuard {
         emit FundraisingStarted(_targetAmount, block.timestamp);
     }
 
-    // ===== KYC / WHITELIST FUNCTIONS =====
-    
     function addToWhitelist(address _investor) external onlyOwner {
         require(_investor != address(0), "Invalid address");
         require(!isWhitelisted[_investor], "Already whitelisted");
-        
         isWhitelisted[_investor] = true;
         whitelistedAddresses.push(_investor);
-        
         emit InvestorWhitelisted(_investor, block.timestamp);
     }
 
@@ -198,8 +180,6 @@ contract MSMEToken is ERC20, ERC20Burnable, Ownable, ReentrancyGuard {
         emit InvestorRemovedFromWhitelist(_investor, block.timestamp);
     }
 
-    // ===== TOKEN PURCHASE =====
-    
     function buyTokens() external payable whenNotPaused onlyWhitelisted onlyDuringFundraising nonReentrant {
         require(msg.value > 0, "Must send MATIC to buy tokens");
         require(msg.value >= tokenPrice, "Minimum purchase is 1 token");
@@ -207,27 +187,20 @@ contract MSMEToken is ERC20, ERC20Burnable, Ownable, ReentrancyGuard {
         uint256 tokenAmount = (msg.value * 10**decimals()) / tokenPrice;
         require(tokenAmount > 0, "Token amount too small");
 
-        // Check if this would exceed target
-        uint256 newTotal = msmeInfo.amountRaised + msg.value;
-        
-        // Track investment
         if (investmentAmount[msg.sender] == 0) {
             investors.push(msg.sender);
         }
         investmentAmount[msg.sender] += msg.value;
         msmeInfo.amountRaised += msg.value;
 
-        // Mint tokens to buyer
         _mint(msg.sender, tokenAmount);
 
         emit TokensPurchased(msg.sender, tokenAmount, msg.value, block.timestamp);
 
-        // Check if target reached
         if (msmeInfo.amountRaised >= msmeInfo.targetAmount) {
             msmeInfo.targetReached = true;
             msmeInfo.isFundraising = false;
             
-            // Transfer funds to founder (minus platform fee)
             uint256 platformFee = (msmeInfo.amountRaised * PLATFORM_FEE_PERCENT) / 100;
             uint256 founderAmount = msmeInfo.amountRaised - platformFee;
             
@@ -241,8 +214,6 @@ contract MSMEToken is ERC20, ERC20Burnable, Ownable, ReentrancyGuard {
         }
     }
 
-    // ===== DIVIDEND DISTRIBUTION =====
-    
     function distributeDividends() external payable onlyOwner whenNotPaused nonReentrant {
         require(msg.value > 0, "Must send MATIC for dividends");
         require(totalSupply() > 0, "No tokens in circulation");
@@ -255,7 +226,6 @@ contract MSMEToken is ERC20, ERC20Burnable, Ownable, ReentrancyGuard {
             uint256 balance = balanceOf(investor);
             
             if (balance > 0) {
-                // Calculate proportional dividend
                 uint256 dividend = (msg.value * balance) / totalSupply();
                 
                 if (dividend > 0) {
@@ -273,7 +243,6 @@ contract MSMEToken is ERC20, ERC20Burnable, Ownable, ReentrancyGuard {
 
         totalDividendsDistributed += totalDistributed;
         
-        // Refund any dust remaining due to rounding
         uint256 remaining = msg.value - totalDistributed;
         if (remaining > 0) {
             (bool refundSuccess, ) = owner().call{value: remaining}("");
@@ -283,8 +252,6 @@ contract MSMEToken is ERC20, ERC20Burnable, Ownable, ReentrancyGuard {
         emit DividendDistributed(totalDistributed, recipientCount, block.timestamp);
     }
 
-    // ===== REFUND MECHANISM =====
-    
     function issueRefunds() external onlyOwner nonReentrant {
         require(!msmeInfo.targetReached, "Target was reached, cannot refund");
         require(!msmeInfo.isRefunded, "Already refunded");
@@ -302,7 +269,6 @@ contract MSMEToken is ERC20, ERC20Burnable, Ownable, ReentrancyGuard {
             if (amount > 0) {
                 investmentAmount[investor] = 0;
                 
-                // Burn their tokens
                 uint256 tokenBalance = balanceOf(investor);
                 if (tokenBalance > 0) {
                     _burn(investor, tokenBalance);
@@ -320,8 +286,6 @@ contract MSMEToken is ERC20, ERC20Burnable, Ownable, ReentrancyGuard {
         emit AllRefundsCompleted(totalRefunded, block.timestamp);
     }
 
-    // ===== GOVERNANCE =====
-    
     function createProposal(
         string calldata _title,
         string calldata _description
@@ -374,8 +338,6 @@ contract MSMEToken is ERC20, ERC20Burnable, Ownable, ReentrancyGuard {
         emit ProposalExecuted(_proposalId, passed, block.timestamp);
     }
 
-    // ===== VESTING =====
-    
     function createVesting(
         address _beneficiary,
         uint256 _amount,
@@ -421,8 +383,6 @@ contract MSMEToken is ERC20, ERC20Burnable, Ownable, ReentrancyGuard {
         emit VestingReleased(msg.sender, releasable, block.timestamp);
     }
 
-    // ===== PAUSE / UNPAUSE =====
-    
     function pause() external onlyOwner {
         paused = true;
         emit ContractPaused(block.timestamp);
@@ -433,8 +393,6 @@ contract MSMEToken is ERC20, ERC20Burnable, Ownable, ReentrancyGuard {
         emit ContractUnpaused(block.timestamp);
     }
 
-    // ===== UTILITY FUNCTIONS =====
-    
     function updateIPFSHash(string calldata _newHash) external onlyOwner {
         string memory oldHash = msmeInfo.ipfsHash;
         msmeInfo.ipfsHash = _newHash;
@@ -454,72 +412,32 @@ contract MSMEToken is ERC20, ERC20Burnable, Ownable, ReentrancyGuard {
     }
 
     function getProposalVotes(uint256 _proposalId) external view returns (
-        uint256 forVotes,
-        uint256 againstVotes,
-        bool isActive,
-        bool isExecuted
+        uint256 forVotes, uint256 againstVotes, bool isActive, bool isExecuted
     ) {
         Proposal storage proposal = proposals[_proposalId];
-        return (
-            proposal.forVotes,
-            proposal.againstVotes,
-            block.timestamp <= proposal.endTime,
-            proposal.executed
-        );
+        return (proposal.forVotes, proposal.againstVotes, block.timestamp <= proposal.endTime, proposal.executed);
     }
 
     function getVestingInfo(address _beneficiary) external view returns (
-        uint256 totalAmount,
-        uint256 releasedAmount,
-        uint256 startTime,
-        uint256 duration,
-        bool exists
+        uint256 totalAmount, uint256 releasedAmount, uint256 startTime, uint256 duration, bool exists
     ) {
         VestingSchedule storage schedule = vestingSchedules[_beneficiary];
-        return (
-            schedule.totalAmount,
-            schedule.releasedAmount,
-            schedule.startTime,
-            schedule.duration,
-            schedule.exists
-        );
+        return (schedule.totalAmount, schedule.releasedAmount, schedule.startTime, schedule.duration, schedule.exists);
     }
 
     function getMSMEInfo() external view returns (
-        string memory name,
-        string memory category,
-        string memory city,
-        string memory gstNumber,
-        uint256 targetAmount,
-        uint256 equityOffered,
-        uint256 amountRaised,
-        bool isFundraising,
-        bool targetReached,
-        bool isRefunded
+        string memory name, string memory category, string memory city, string memory gstNumber,
+        uint256 targetAmount, uint256 equityOffered, uint256 amountRaised,
+        bool isFundraising, bool targetReached, bool isRefunded
     ) {
         return (
-            msmeInfo.name,
-            msmeInfo.category,
-            msmeInfo.city,
-            msmeInfo.gstNumber,
-            msmeInfo.targetAmount,
-            msmeInfo.equityOffered,
-            msmeInfo.amountRaised,
-            msmeInfo.isFundraising,
-            msmeInfo.targetReached,
-            msmeInfo.isRefunded
+            msmeInfo.name, msmeInfo.category, msmeInfo.city, msmeInfo.gstNumber,
+            msmeInfo.targetAmount, msmeInfo.equityOffered, msmeInfo.amountRaised,
+            msmeInfo.isFundraising, msmeInfo.targetReached, msmeInfo.isRefunded
         );
     }
 
-    // ===== OVERRIDE: Restrict transfers to whitelisted only =====
-    
-    function _update(
-        address from,
-        address to,
-        uint256 value
-    ) internal override {
-        // Allow minting (from == address(0)) and burning (to == address(0))
-        // For transfers, both parties must be whitelisted
+    function _update(address from, address to, uint256 value) internal override {
         if (from != address(0) && to != address(0) && to != address(this) && from != address(this)) {
             require(isWhitelisted[from], "Sender not whitelisted");
             require(isWhitelisted[to], "Receiver not whitelisted");
@@ -528,6 +446,5 @@ contract MSMEToken is ERC20, ERC20Burnable, Ownable, ReentrancyGuard {
         super._update(from, to, value);
     }
 
-    // Allow contract to receive MATIC
     receive() external payable {}
 }
